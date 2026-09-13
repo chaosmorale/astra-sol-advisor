@@ -19,6 +19,19 @@
 плагин останавливает делегирование и сообщает о проблеме. Плагин не собирает расход
 токенов и не рассчитывает стоимость.
 
+### Экономия и эффективность
+
+В локальной выборке Astra Advisor использовал Astra примерно на 14% меньше по доле
+токенов, чем прежний процесс с Codex Orchestration. Доля Astra в расчётной стоимости
+снизилась примерно на 8%, а условная экономия выросла примерно на 22%.
+
+Практический эффект — больше ограниченных частей задачи выполняют Sol, Terra и Luna,
+а основная модель сохраняет контроль над планом и итоговой проверкой.
+
+Это не прямое сравнение качества: наборы и объём задач различались. Цифры стоимости
+расчётные и не равны реальному списанию денег или квоты подписки. Фактическая экономия
+квоты подписки — `Нет данных`.
+
 Репозиторий закрытый. Перед установкой владелец должен предоставить вашему аккаунту
 GitHub доступ:
 
@@ -106,6 +119,19 @@ requested checks, and requests a fresh read-only review. Only a `ship` verdict a
 the work. The plugin reports requested and runtime-observed model settings separately.
 
 The plugin does not collect token usage or calculate costs.
+
+## Savings and effectiveness
+
+In a local sample, Astra Advisor used about 14% less Astra by token share than the
+previous Codex Orchestration workflow. Astra's share of estimated cost fell by about
+8%, while estimated savings improved by about 22%.
+
+The practical effect is that more bounded work can run on Sol, Terra, and Luna while
+the selected primary model retains planning and final verification ownership.
+
+This is not a controlled quality comparison: the task sets and workloads differed.
+Estimated cost is not actual money charged or subscription quota consumed. Actual
+subscription quota savings: no data.
 
 ## Verify
 
