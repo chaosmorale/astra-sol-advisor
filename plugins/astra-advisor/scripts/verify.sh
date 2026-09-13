@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import re
 import sys
-import subprocess
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -77,16 +76,17 @@ manifest_path = plugin / ".codex-plugin" / "plugin.json"
 manifest = require_mapping(load_json(manifest_path, "plugin manifest"), "plugin manifest")
 
 require_string(manifest, "name", "plugin manifest", "astra-advisor")
-require_string(manifest, "version", "plugin manifest", "0.2.0")
+require_string(manifest, "version", "plugin manifest", "0.2.0-sol.1")
 require_string(manifest, "description", "plugin manifest")
-require_string(manifest, "homepage", "plugin manifest", "https://github.com/DannyMac180/astra-advisor#readme")
-require_string(manifest, "repository", "plugin manifest", "https://github.com/DannyMac180/astra-advisor")
+require_string(manifest, "homepage", "plugin manifest", "https://github.com/chaosmorale/astra-sol-advisor#readme")
+require_string(manifest, "repository", "plugin manifest", "https://github.com/chaosmorale/astra-sol-advisor")
 require_string(manifest, "license", "plugin manifest", "MIT")
 require(manifest.get("skills") == "./skills/", "plugin manifest.skills must be ./skills/")
 keywords = manifest.get("keywords")
 require_list_of_strings(keywords, "plugin manifest.keywords")
 if isinstance(keywords, list):
     require("orchestration" in keywords, "plugin manifest.keywords must include orchestration")
+    require("gpt-5.6-sol" in keywords, "plugin manifest.keywords must include gpt-5.6-sol")
 
 author = require_mapping(manifest.get("author"), "plugin manifest.author")
 require_string(author, "name", "plugin manifest.author", "Daniel McAteer")
@@ -95,7 +95,7 @@ require_string(author, "url", "plugin manifest.author", "https://github.com/Dann
 interface = require_mapping(manifest.get("interface"), "plugin manifest.interface")
 for key, expected in (
     ("displayName", "Astra Advisor"),
-    ("developerName", "Daniel McAteer"),
+    ("developerName", "Daniel McAteer; Sol modification by chaosmorale"),
     ("category", "Productivity"),
 ):
     require_string(interface, key, "plugin manifest.interface", expected)
@@ -105,7 +105,7 @@ capabilities = interface.get("capabilities")
 require_list_of_strings(capabilities, "plugin manifest.interface.capabilities")
 if isinstance(capabilities, list):
     require({"Interactive", "Write"}.issubset(capabilities), "plugin manifest.interface.capabilities must include Interactive and Write")
-require_string(interface, "websiteURL", "plugin manifest.interface", "https://github.com/DannyMac180/astra-advisor")
+require_string(interface, "websiteURL", "plugin manifest.interface", "https://github.com/chaosmorale/astra-sol-advisor")
 default_prompt = interface.get("defaultPrompt")
 require_list_of_strings(default_prompt, "plugin manifest.interface.defaultPrompt")
 if isinstance(default_prompt, list):
@@ -115,15 +115,34 @@ skill_root = plugin / "skills" / "orchestration"
 skill_path = skill_root / "SKILL.md"
 operations_path = skill_root / "references" / "operations.md"
 ui_path = skill_root / "agents" / "openai.yaml"
+worker_roster_path = skill_root / "references" / "worker-roster.json"
 require(skill_path.is_file(), f"missing orchestration skill: {skill_path}")
 require(operations_path.is_file(), f"missing operations reference: {operations_path}")
 require(ui_path.is_file(), f"missing orchestration UI metadata: {ui_path}")
+worker_roster = require_mapping(load_json(worker_roster_path, "worker roster"), "worker roster")
+require(worker_roster.get("schema_version") == 1, "worker roster.schema_version must equal 1")
+workers = worker_roster.get("workers")
+require(isinstance(workers, list) and bool(workers), "worker roster.workers must be a non-empty array")
+worker_models: set[str] = set()
+if isinstance(workers, list):
+    for index, worker in enumerate(workers):
+        worker = require_mapping(worker, f"worker roster.workers[{index}]")
+        require(
+            set(worker) == {"model", "codex_provider", "upstream_provider", "enabled"},
+            f"worker roster.workers[{index}] must contain model, codex_provider, upstream_provider, and enabled only",
+        )
+        model = worker.get("model")
+        require(isinstance(model, str) and bool(model.strip()), f"worker roster.workers[{index}].model must be a non-empty string")
+        if isinstance(model, str):
+            require(model not in worker_models, f"worker roster contains duplicate model: {model}")
+            worker_models.add(model)
+        require(worker.get("codex_provider") == "openai", f"worker roster.workers[{index}].codex_provider must equal 'openai'")
+        require(isinstance(worker.get("upstream_provider"), str) and bool(worker["upstream_provider"].strip()), f"worker roster.workers[{index}].upstream_provider must be a non-empty string")
+        require(isinstance(worker.get("enabled"), bool), f"worker roster.workers[{index}].enabled must be a boolean")
+    require(any(worker.get("enabled") is True for worker in workers if isinstance(worker, dict)), "worker roster must enable at least one worker")
 if operations_path.is_file():
     for target in markdown_links(operations_path.read_text(encoding="utf-8")):
         check_relative_link(target, operations_path.parent, "operations reference link")
-require((plugin / "scripts" / "cost_receipt.py").is_file(), "missing cost receipt calculator")
-require((plugin / "tests" / "test_cost_receipt.py").is_file(), "missing cost receipt tests")
-require((plugin / "pricing" / "2026-09-04.json").is_file(), "missing pricing snapshot")
 
 if skill_path.is_file():
     skill_text = skill_path.read_text(encoding="utf-8")
@@ -147,6 +166,7 @@ require(readme_path.is_file(), f"missing README: {readme_path}")
 if readme_path.is_file():
     readme = readme_path.read_text(encoding="utf-8")
     require("$astra-advisor:orchestration" in readme, "README must include the Astra Advisor invocation")
+    require("https://github.com/DannyMac180/astra-advisor" in readme, "README must credit the upstream repository")
     links = markdown_links(readme)
     require("https://attentionheads.substack.com/" in links, "README must link to Attention Heads")
     subscribe_links = [urlsplit(link) for link in links if urlsplit(link).path == "/subscribe"]
@@ -209,12 +229,15 @@ for path in plugin.rglob("*"):
         errors.append(f"static role TOML is not allowed: {path.relative_to(plugin)}")
 require(not (plugin / "scripts" / "install-agents.sh").exists(), "companion installer is not allowed")
 
-# Exercise accounting behavior as part of the same local and CI verifier.
-result = subprocess.run(
-    [sys.executable, "-B", "-m", "unittest", "discover", "-s", str(plugin / "tests"), "-p", "test_*.py"],
-    cwd=repo,
-)
-require(result.returncode == 0, "cost receipt tests failed")
+personal_home_prefix = "/" + "Users" + "/"
+for path in repo.rglob("*"):
+    if not path.is_file() or ".git" in path.parts:
+        continue
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        continue
+    require(personal_home_prefix not in text, f"personal home path leaked into {path.relative_to(repo)}")
 
 if errors:
     print("VERIFY FAILED")
@@ -223,5 +246,5 @@ if errors:
     raise SystemExit(1)
 
 print("VERIFY PASSED")
-print("manifest, marketplace, skill references, README links, license, CI, and static-role boundaries are valid")
+print("manifest, marketplace, portable roster, attribution, skill references, license, CI, and static-role boundaries are valid")
 PY

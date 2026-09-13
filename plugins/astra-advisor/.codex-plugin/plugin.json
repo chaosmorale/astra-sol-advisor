@@ -1,24 +1,33 @@
 {
   "name": "astra-advisor",
-  "version": "0.2.0",
-  "description": "Codex-native dynamic orchestration with GPT-6 Astra as the primary advisor.",
+  "version": "0.2.0-sol.1",
+  "description": "Community modification of DannyMac180/astra-advisor with GPT-6 Astra or GPT-5.6 Sol as the primary model.",
   "author": {
     "name": "Daniel McAteer",
     "url": "https://github.com/DannyMac180"
   },
-  "homepage": "https://github.com/DannyMac180/astra-advisor#readme",
-  "repository": "https://github.com/DannyMac180/astra-advisor",
+  "homepage": "https://github.com/chaosmorale/astra-sol-advisor#readme",
+  "repository": "https://github.com/chaosmorale/astra-sol-advisor",
   "license": "MIT",
-  "keywords": ["codex", "orchestration", "multi-agent", "gpt-6-astra"],
+  "keywords": [
+    "codex",
+    "orchestration",
+    "multi-agent",
+    "gpt-6-astra",
+    "gpt-5.6-sol"
+  ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Astra Advisor",
-    "shortDescription": "Use GPT-6 Astra to plan, route, verify, and review work dynamically.",
-    "longDescription": "Astra Advisor keeps GPT-6 Astra in the primary session at the effort selected by the user. Astra can combine useful parent work with bounded native Codex subagents, choosing gpt-5.6-sol, gpt-5.6-terra, or gpt-5.6-luna and a supported effort from live tool metadata. ChatGPT Work cloud tasks remain bounded by the create_thread schema and do not promise arbitrary model or effort pinning.",
-    "developerName": "Daniel McAteer",
+    "shortDescription": "Use GPT-6 Astra or GPT-5.6 Sol to plan, route, verify, and review work dynamically.",
+    "longDescription": "Community modification of Daniel McAteer's Astra Advisor. It supports GPT-6 Astra or GPT-5.6 Sol as the primary model at the effort selected by the user. The selected parent can combine useful work with bounded permitted Codex workers chosen from a portable roster and live tool metadata.",
+    "developerName": "Daniel McAteer; Sol modification by chaosmorale",
     "category": "Productivity",
-    "capabilities": ["Interactive", "Write"],
-    "websiteURL": "https://github.com/DannyMac180/astra-advisor",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/chaosmorale/astra-sol-advisor",
     "defaultPrompt": [
       "Use $astra-advisor:orchestration to plan, build, verify, and review this work.",
       "Choose dynamic subagents only when bounded independent work improves delivery."

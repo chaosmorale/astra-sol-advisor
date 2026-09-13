@@ -2,17 +2,27 @@
 
 This reference holds the operational details behind the short orchestration skill.
 It describes capability selection and evidence rules; it does not define installed
-roles, role files, task lanes, or an installer.
+roles, role files, task lanes, or an installer. The optional user roster is
+`$CODEX_HOME/astra-advisor/allowed-workers.json` when `CODEX_HOME` is set, otherwise
+`~/.codex/astra-advisor/allowed-workers.json`. If it is absent, the packaged
+[worker roster](worker-roster.json) is the read-only default. An invalid user roster
+disables delegation instead of falling back.
 
 ## Parent session
 
-The primary session is GPT-6 Astra at whatever supported effort the user selected.
+The primary session is GPT-6 Astra (`gpt-6-astra`) or GPT-5.6 Sol (`gpt-5.6-sol`)
+at whatever supported effort the user selected. Neither model requires a particular effort.
 The invocation is authoritative. Do not require a particular effort, rewrite the
 parent configuration, or claim a model/effort pin without runtime evidence. If the
-session exposes model and effort metadata and the model is not `gpt-6-astra`, report
-that mismatch as a selection prerequisite and do not claim Astra orchestration. If
+session exposes model and effort metadata and the model is neither `gpt-6-astra` nor
+`gpt-5.6-sol`, report that mismatch as a selection prerequisite and do not claim
+supported orchestration. If
 metadata does not expose the model or effort, report the value as unobservable and
 continue within the user's request without inventing confirmation.
+
+The selected parent performs all planning, integration, verification, and acceptance.
+Sol does not require an Astra call. `ASTRA` labels below are stable plugin status
+identifiers, not evidence of the running model.
 
 After capability preflight and before the first implementation or delegation task
 call, record the selected plan:
@@ -27,36 +37,30 @@ risk: <concise, task-specific rationale>
 The declaration is a record of the current decision, not a fixed set of workflow
 lanes. Update it only when new evidence changes the plan, and explain that evidence.
 
-## Dynamic native delegation
+## Dynamic delegation
 
-Use the generic `collaboration.spawn_agent` only if the current environment exposes
-that tool and its schema. Select a model and effort for each concrete, bounded,
-independent deliverable from the task's risk, context, and available work. Pass the
-chosen values explicitly:
+Resolve the optional user roster from `CODEX_HOME` or `~/.codex` as described above
+before selecting a worker. If it exists, validate and use it. If it is absent, validate
+and use the packaged [worker roster](worker-roster.json). Validate schema_version 1, a
+workers array, unique nonempty model IDs, nonempty provider fields, and boolean enabled
+values. An invalid user roster disables delegation; do not fall back or merge files.
+Select an enabled roster entry and an
+effort for each concrete, bounded, independent deliverable from the task's risk,
+context, available work, and the live schema. The roster is a policy allowlist, not an
+engine access control list. Use a generic spawn tool exposed under the `agents` or
+`collaboration` namespace only when the schema has explicit `model` and
+`reasoning_effort` controls. Pass the chosen model and effort explicitly.
 
-~~~text
-model: <selected supported model>
-reasoning_effort: <selected supported effort>
-fork_turns: none
-~~~
+Include the bounded task and expected result in the message. Include a task name only
+if the current tool accepts it. Select the fresh-context control from the live schema:
+- Version 2: `fork_turns: "none"`.
+- Version 1: `fork_context: false`, only if exposed by that tool.
 
-Include a task name and a message that states the bounded ownership and expected
-return. For example, this is one illustrative request shape; the model and effort
-must be selected afresh for the actual task:
-
-~~~json
-{
-  "task_name": "inspect_auth_boundary",
-  "message": "Inspect the auth boundary in the owned files. Return findings, exact file references, and the checks you ran; do not edit outside that boundary.",
-  "model": "gpt-5.6-luna",
-  "reasoning_effort": "max",
-  "fork_turns": "none"
-}
-~~~
-
-The example does not prescribe a model, effort, task name, or number of subagents.
+The saved local transport setting is default; the selected model determines its
+interface. Confirm the actual schema in each task; do not infer it from saved settings.
 Use the current tool schema for any additional required fields and reject a request
-whose selected controls cannot be enforced.
+whose selected controls cannot be enforced. Do not invent controls, use a nested CLI,
+or send work through a direct API transport.
 
 Do not rely on role names, predefined TOMLs, a role-to-model table, or a fixed count
 cap. Dispatch only work whose files, interfaces, and acceptance evidence are clear;
@@ -65,20 +69,11 @@ parent session while independent subagents run. Avoid assigning the same change 
 check to both parent and subagent. Preserve concurrent edits and return each
 subagent's actual result and evidence to the parent.
 
-The following is the known capability snapshot for routing. It is guidance for a
-selection, not a contract that overrides live tool metadata:
-
-| Model | Efforts known in the current snapshot |
-| --- | --- |
-| `gpt-5.6-sol` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
-| `gpt-5.6-terra` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
-| `gpt-5.6-luna` | `low`, `medium`, `high`, `xhigh`, `max` |
-
 Inspect the current tool metadata when selecting and invoking a subagent. A changed
-live capability list wins over this snapshot. If the selected model, effort, explicit
-spawn control, or required tool is unavailable, conflicting, or unobservable, fail
-the affected delegation closed. Continue safe parent work when possible and report
-the limitation; never silently substitute another model, effort, or tool.
+live capability list wins over the roster. If the selected enabled model, effort,
+explicit spawn control, or required tool is unavailable, conflicting, or unobservable,
+fail the affected delegation closed. Continue safe parent work when possible and
+report the limitation; never silently substitute another model, effort, or tool.
 
 ## Evidence and review
 
@@ -88,9 +83,9 @@ the source of each value. Chosen values are not the same as runtime-confirmed va
 
 For substantial implementation, the parent first inspects the complete accumulated
 diff and reruns the requested checks. It then starts a fresh read-only reviewer in a
-new context. The reviewer can be `gpt-5.6-sol`, `gpt-5.6-terra`, or `gpt-5.6-luna`,
-with an effort supported by live metadata, and must receive the exact change set,
-interfaces, constraints, and verification evidence. Ask it to return:
+new context. Select the reviewer from the enabled worker roster with an effort
+supported by live metadata; it must receive the exact change set, interfaces,
+constraints, and verification evidence. Ask it to return:
 
 ~~~text
 ASTRA REVIEW
@@ -109,8 +104,10 @@ it was observed.
 
 ## ChatGPT app and cloud boundaries
 
-Native Codex subagents in the ChatGPT app are usable when the exposed tool schema
-provides the needed controls. Separate app tasks require an explicit user request.
+Permitted Codex workers use only the exposed spawn interface. The roster may include
+models routed by the existing Codex `openai` transport; do not use a nested CLI, API
+key, or other direct inference transport. Separate app tasks require an explicit user
+request.
 For an explicit Codex app project task, `mcp__codex_app__create_thread` supports
 `model` and `thinking`; call `mcp__codex_app__list_projects` first, use a worktree by
 default when the selected project is a Git repository, and use local otherwise.
@@ -148,91 +145,7 @@ evidence: <runtime metadata source or unavailable>
 ~~~
 
 Do not equate a successful dispatch with completed work. Keep a record of agent IDs,
-requested settings, runtime observations, result evidence, and any usage source.
-Native metadata may expose neither realized settings nor billing-grade usage; say so.
-No API keys, external inference CLIs, billing-account queries, or dashboard are needed.
-
-## API-equivalent receipt policy
-
-Every task completion requires a visible receipt, including a task with no delegation
-or no accessible token telemetry. The calculator is Python standard library only:
-[calculator](../../../scripts/cost_receipt.py),
-[pricing snapshot](../../../pricing/2026-09-04.json).
-Resolve these paths relative to this installed reference, not a guessed cache version.
-
-Use only non-overlapping observed usage with an explicit source. Cumulative telemetry
-snapshots are not additive calls. Never sum a parent-inclusive aggregate with child
-totals. Do not turn message lengths into claimed observed usage. Missing usage or
-rates must remain unavailable, and partial coverage must state which work is missing.
-Whole-task coverage requires every parent and subagent call, including failed attempts,
-review, corrections, and final parent work. If the final response's tokens cannot yet
-be observed, identify the receipt's cutoff and do not claim whole-task completeness.
-
-Cached input is a subset of total input. Output already contains reasoning tokens;
-never add them a second time. Explicit per-call standard short-context eligibility
-is required; unknown or unsupported long-context, service-tier, or cache-write pricing
-must not silently inherit standard rates. Effort is recorded without a rate multiplier.
-
-The snapshot records USD per million tokens and official source URLs, with a
-2026-09-04 verification date supplied by the recording coordinator. It is a historical
-snapshot, not a live-price guarantee; Sol rates are promotional. Disclose the snapshot
-date and freshness when showing an estimate. Use a newly verified versioned snapshot
-if current prices are required. Do not silently change historical receipts.
-
-~~~text
-API-EQUIVALENT COST RECEIPT
-usage: <observed source and cutoff, partial, or unavailable with reason>
-scope: <whole task only if complete; delegated-only or observed subset otherwise>
-pricing: <snapshot date; historical USD estimate; Sol promotional if applicable>
-routed: <USD estimate or unavailable>
-same-token Astra repricing: <USD or unavailable>
-same-token API price difference: <USD and percentage where valid, or unavailable>
-limits: This is not a measured all-Astra counterfactual, actual net task savings,
-        or a change in ChatGPT subscription charges or usage credits.
-~~~
-
-When no subagents ran, state `no delegation savings`. When no usage is exposed,
-state `unavailable: native tools did not expose observed token usage`; never show
-zero cost. Keep any illustrative fixture result visibly separate from live usage.
-
-## Calculator input and execution
-
-Run `python3 cost_receipt.py INPUT.json [--pricing PATH]` using the installed
-calculator path above. It emits a JSON receipt; exit 0 includes calculated, partial,
-and unavailable outcomes, while invalid input or pricing exits 2. Inspect the
-receipt status instead of treating exit 0 as proof of complete usage.
-
-The version 1 input contains:
-
-- `schema_version: 1`, `task_id`, and `coverage` with `scope` (`whole_task` or
-  `delegated_only`), `agent_roster_complete`, and `final_parent_usage_cutoff` booleans.
-- `agents`: unique `agent_id`, `role` (`parent`, `delegate`, or `reviewer`), and
-  `calls_complete`. Declare missing agents rather than omitting them to improve coverage.
-- `calls`: globally unique `call_id`, declared `agent_id`, `model`, optional `effort`,
-  and `aggregation: "atomic"`. Supply `usage.kind`, a non-empty `usage.source`, and
-  `input_tokens`, `cached_input_tokens`, and `output_tokens` when known. Optional
-  `reasoning_tokens` is already included in output. Missing values stay unknown.
-- Each call also declares `context: "standard"` and `service_tier: "standard"`, with
-  `context_source` and `service_tier_source` set to `observed` or `assumed`. If runtime
-  tier metadata is null, a clearly disclosed standard-price scenario is permitted;
-  never relabel that assumption as observed billing. Known nonstandard regimes
-  are unsupported. Do not assume a workload eligible when evidence contradicts it.
-
-See the [illustrative input](../../../examples/illustrative-usage.json) for an
-executable fixture, distinct from observed task usage. Receipts preserve assumptions,
-usage provenance, and per-agent coverage. Delegated-only scope includes reviewers;
-whole-task scope needs an authoritative complete roster, complete calls for each
-agent, a parent, and final parent usage. Solo work does not require an invented
-reviewer. False completeness flags keep the result partial or unavailable.
-
-For cumulative native telemetry, retain each snapshot as source evidence, skip exact
-repeats, and derive atomic records only when the cumulative delta matches the
-reported last-call usage for every token field. If events are missing, counters reset,
-or aggregate ownership is unclear, mark that coverage unavailable rather than
-inventing calls. Keep preparation-turn usage separate from the implementation turn
-when that is the declared task scope.
-
-The bundled calculator conservatively caps each call at 128,000 input tokens. This
-is an implementation support boundary, not an official model pricing threshold.
-Missing cache counts remain unknown; provide an explicit zero only when supported
-by the usage source. Unknown usage fields are rejected to avoid ignoring cache writes.
+requested settings, runtime observations, and result evidence.
+If runtime settings are unavailable, say so. Finish with the verified result and
+remaining limitations; no token accounting, price lookup, cost calculation, or cost
+report is part of this workflow.

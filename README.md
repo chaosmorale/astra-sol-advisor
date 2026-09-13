@@ -1,39 +1,55 @@
-# Astra Advisor
+# Astra Advisor — Astra + Sol modification
 
-**GPT-6 Astra plans the work, chooses useful bounded delegation dynamically, and
-owns verification and acceptance.**
+**GPT-6 Astra or GPT-5.6 Sol can lead the work, choose useful bounded delegation,
+and own verification and acceptance.**
 
-Astra Advisor is a Codex plugin for capability-routed software delivery. Give Astra
-the goal, constraints, and repository context; it decides whether independent work
-should run alongside the parent session and chooses a supported native subagent
-model and effort for each bounded deliverable.
+This is a community modification of Daniel McAteer's original
+[Astra Advisor](https://github.com/DannyMac180/astra-advisor). The modification adds
+GPT-5.6 Sol as a supported primary model alongside GPT-6 Astra and keeps delegation
+limited to an explicit Sol, Terra, and Luna roster.
+
+The selected primary model receives the goal, constraints, and repository context. It
+decides whether independent work should run alongside the parent session and chooses
+an enabled worker and supported effort for each bounded deliverable.
+
+## Origin and license
+
+- Original repository: [DannyMac180/astra-advisor](https://github.com/DannyMac180/astra-advisor)
+- Original developer: Daniel McAteer
+- Sol modification: [chaosmorale/astra-sol-advisor](https://github.com/chaosmorale/astra-sol-advisor)
+- License: MIT. The original copyright and license notice are retained in [LICENSE](LICENSE).
 
 ## Cloud limitation
 
-ChatGPT Work cloud `create_thread` must omit `model` and
-`thinking`, so it cannot currently promise arbitrary model or effort control. Astra
-does not dispatch a model-pinned request there by default. Native Codex subagents are usable
-where the current tool schema exposes the needed controls.
+ChatGPT Work cloud `create_thread` must omit `model` and `thinking`, so it cannot
+currently promise arbitrary model or effort control. Permitted Codex workers are
+usable where the current tool schema exposes the needed controls.
 
-## Go deeper
+## Worker roster
 
-I write [Attention Heads](https://attentionheads.substack.com/) — deep,
-evidence-backed writing on AI, cognition, and agentic engineering. The **Agentic
-Engineering Field Notes** series covers the craft of using AI. [Subscribe](https://attentionheads.substack.com/subscribe?utm_source=github&utm_medium=readme&utm_campaign=astra-advisor)
-to get new posts in your inbox.
+The packaged [worker roster](plugins/astra-advisor/skills/orchestration/references/worker-roster.json)
+enables GPT-5.6 Sol, Terra, and Luna by default. To override it for one installation,
+create `allowed-workers.json` under `$CODEX_HOME/astra-advisor/`, or under
+`~/.codex/astra-advisor/` when `CODEX_HOME` is not set. An invalid user roster stops
+delegation instead of silently using the packaged default.
+
+## Original developer
+
+Daniel McAteer writes [Attention Heads](https://attentionheads.substack.com/) about AI,
+cognition, and agentic engineering. [Subscribe](https://attentionheads.substack.com/subscribe?utm_source=github&utm_medium=readme&utm_campaign=astra-advisor)
+to get new posts.
 
 ## Quick start
 
-Install the plugin in a current Codex CLI or ChatGPT desktop app with plugins
-enabled. Start a fresh task after installation and select GPT-6 Astra at any effort
-supported by the current Codex host:
+This repository is private. The GitHub account installing it must have access.
 
 ~~~sh
-codex plugin marketplace add DannyMac180/astra-advisor --ref main
+codex plugin marketplace add chaosmorale/astra-sol-advisor --ref main
 codex plugin add astra-advisor@astra-advisor
 ~~~
 
-Start a task with:
+Restart the ChatGPT desktop app and start a fresh task. Select GPT-6 Astra or GPT-5.6
+Sol at any effort supported by the current Codex host, then invoke:
 
 ~~~text
 Use $astra-advisor:orchestration to plan, build, verify, and review this work.
@@ -41,87 +57,29 @@ Use $astra-advisor:orchestration to plan, build, verify, and review this work.
 
 ## How routing works
 
-Astra remains the architect and acceptance owner in the primary GPT-6 Astra session
-at the effort selected by the user. After capability preflight, Astra records the
-parent model and effort as observed or unobservable before implementation or
-delegation begins. The skill never changes the parent session.
+The selected Astra or Sol session remains the architect and acceptance owner at the
+effort selected by the user. The skill never changes the parent model or effort.
 
-When delegation helps, Astra uses the exposed generic `collaboration.spawn_agent`
-tool with an explicit `model`, `reasoning_effort`, and `fork_turns: none`. It chooses
-among `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna` from the task's risk,
-context, and independent work. There are no predefined role TOMLs, companion
-installer, role-to-model mapping, or fixed subagent count cap. Astra gives each
-subagent a concrete bounded deliverable and continues useful parent work while it
-runs.
+When delegation helps, the parent uses an exposed generic spawn tool with an explicit
+model, reasoning effort, and fresh-context control. It chooses an enabled worker from
+the roster. Every subagent receives one bounded deliverable. No predefined role files,
+role-to-model table, or fixed subagent count are included.
 
-Live tool metadata is authoritative. The current documented effort snapshot is:
+Live tool metadata is authoritative. A version 2 interface uses `fork_turns: none`. A
+version 1 interface requires its exposed fresh-context control. Missing or conflicting
+controls stop delegation instead of silently substituting a model or tool.
 
-| Model | Known efforts |
-| --- | --- |
-| `gpt-5.6-sol` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
-| `gpt-5.6-terra` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` |
-| `gpt-5.6-luna` | `low`, `medium`, `high`, `xhigh`, `max` |
+For substantial implementation, the parent inspects the complete change, reruns the
+requested checks, and requests a fresh read-only review. Only a `ship` verdict accepts
+the work. The plugin reports requested and runtime-observed model settings separately.
 
-If a selected model, effort, control, or tool is unavailable, conflicting, or
-unobservable, Astra fails that delegation closed and reports the limitation. It does
-not silently substitute a model, effort, role, or fabricated tool. Chosen values and
-runtime-confirmed values are reported separately.
+The plugin does not collect token usage or calculate costs.
 
-For substantial implementation, Astra inspects the complete diff and reruns the
-requested checks, then sends the accumulated change set to a fresh read-only
-reviewer. The reviewer can be any of the three supported models at a live-supported
-effort. Astra accepts the work only after the reviewer returns `ship`; `fix-first`
-requires a new parent verification and fresh review, while `rethink` requires a
-revised plan.
-
-## Live visibility and cost receipts (0.2.0)
-
-Every delegation announces its name, bounded task, selected model and reasoning
-effort, and selection reason. Its result reports actual status and runtime-observed
-settings, or explicitly says those settings are unobservable. These updates also
-cover fresh reviewers. A requested setting is not proof of the realized setting.
-
-Every task ends with an API-equivalent cost receipt. When native tools expose token
-usage, the receipt estimates its USD price using the versioned snapshot and compares
-that same token workload repriced entirely at Astra. It separates whole-task,
-delegated-only, and partial coverage. Missing parent or reviewer usage prevents a
-whole-task claim. Without observed usage, the receipt says why it is unavailable.
-
-The difference is a **same-token API price comparison**. It does not measure what an
-all-Astra run would actually consume, actual net task savings, quality, speed, or a
-change to ChatGPT subscription charges or usage credits. No subagents means no
-delegation savings. Reasoning effort does not multiply the token price.
-
-The [pricing snapshot](plugins/astra-advisor/pricing/2026-09-04.json) records official
-source URLs and standard short-context USD rates per million tokens, verified by
-the recording coordinator on September 4, 2026. These are historical estimates;
-Sol pricing is promotional and may change. The calculator rejects unsupported
-long-context, service-tier, and cache-write cases instead of assuming standard rates.
-It conservatively supports at most 128,000 input tokens per call; this is an
-implementation support boundary, not a claimed official pricing threshold.
-
-Try the clearly labeled illustrative workload (not a receipt for your task):
+## Verify
 
 ~~~sh
-python3 plugins/astra-advisor/scripts/cost_receipt.py plugins/astra-advisor/examples/illustrative-usage.json
 sh plugins/astra-advisor/scripts/verify.sh
 ~~~
-
-The calculator emits JSON and accepts `--pricing PATH` for another verified snapshot.
-Its input lists agents and unique atomic calls, usage provenance, coverage assertions,
-and explicit pricing eligibility. It validates cached-input and reasoning-output
-subsets, refuses overlapping aggregates, and keeps unknown usage separate from zero.
-See the [operations reference](plugins/astra-advisor/skills/orchestration/references/operations.md)
-for the input contract and receipt policy.
-
-## ChatGPT app tasks
-
-Separate app tasks require an explicit user request. For an explicit Codex app task,
-`mcp__codex_app__create_thread` supports `model` and `thinking`; call
-`mcp__codex_app__list_projects` first for project targets, use a worktree by default
-for Git projects, and use local otherwise. Cloud `create_thread` omits both controls,
-so the bounded limitation above applies. Do not use an API key, nested CLI, or
-invented tool as a workaround.
 
 ## Updating
 
@@ -130,11 +88,11 @@ codex plugin marketplace upgrade astra-advisor
 codex plugin add astra-advisor@astra-advisor
 ~~~
 
-For local development, install this checkout as a marketplace:
+For local development:
 
 ~~~sh
-cd /absolute/path/to/astra-advisor
-codex plugin marketplace add /absolute/path/to/astra-advisor
+cd /absolute/path/to/astra-sol-advisor
+codex plugin marketplace add /absolute/path/to/astra-sol-advisor
 codex plugin add astra-advisor@astra-advisor
 ~~~
 
