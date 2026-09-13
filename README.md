@@ -29,8 +29,7 @@
 а основная модель сохраняет контроль над планом и итоговой проверкой.
 
 Это не прямое сравнение качества: наборы и объём задач различались. Цифры стоимости
-расчётные и не равны реальному списанию денег или квоты подписки. Фактическая экономия
-квоты подписки — `Нет данных`.
+расчётные и не равны реальному списанию денег или квоты подписки.
 
 Репозиторий закрытый. Перед установкой владелец должен предоставить вашему аккаунту
 GitHub доступ:
@@ -130,8 +129,7 @@ The practical effect is that more bounded work can run on Sol, Terra, and Luna w
 the selected primary model retains planning and final verification ownership.
 
 This is not a controlled quality comparison: the task sets and workloads differed.
-Estimated cost is not actual money charged or subscription quota consumed. Actual
-subscription quota savings: no data.
+Estimated cost is not actual money charged or subscription quota consumed.
 
 ## Verify
 
