@@ -14,11 +14,6 @@
 Модель и уровень мышления выбираются по сложности этой части задачи и возможностям
 текущего инструмента Codex.
 
-Список разрешённых подагентов входит в плагин и работает на разных компьютерах без
-личных путей владельца репозитория. Если пользовательский список настроен с ошибкой,
-плагин останавливает делегирование и сообщает о проблеме. Плагин не собирает расход
-токенов и не рассчитывает стоимость.
-
 ### Экономия и эффективность
 
 В локальной выборке Astra Advisor использовал Astra примерно на 14% меньше по доле
@@ -28,11 +23,7 @@
 Практический эффект — больше ограниченных частей задачи выполняют Sol, Terra и Luna,
 а основная модель сохраняет контроль над планом и итоговой проверкой.
 
-Это не прямое сравнение качества: наборы и объём задач различались. Цифры стоимости
-расчётные и не равны реальному списанию денег или квоты подписки.
-
-Репозиторий закрытый. Перед установкой владелец должен предоставить вашему аккаунту
-GitHub доступ:
+### Установка
 
 ~~~sh
 codex plugin marketplace add chaosmorale/astra-sol-advisor --ref main
@@ -41,6 +32,30 @@ codex plugin add astra-advisor@astra-advisor
 
 После установки перезапустите приложение ChatGPT и начните новую задачу. Лицензия MIT
 и ссылка на исходный проект сохранены.
+
+### Как распределяется работа
+
+Выбранная сессия Astra или Sol руководит решением и отвечает за приёмку результата
+на уровне мышления, который выбрал пользователь. Навык не меняет модель или уровень
+мышления основной сессии.
+
+Когда делегирование полезно, основная сессия запускает подагента с явно указанными
+моделью, уровнем мышления и чистым контекстом. Она выбирает разрешённую модель из
+списка, а каждый подагент получает одну ограниченную часть задачи. В плагине нет
+заранее заданных ролей, таблицы соответствия ролей и моделей или фиксированного числа
+подагентов.
+
+Свежие данные доступного инструмента имеют приоритет. Интерфейс версии 2 использует
+`fork_turns: none`. Для интерфейса версии 1 требуется доступный в нём способ начать с
+чистого контекста. Если нужные параметры отсутствуют или противоречат друг другу,
+плагин останавливает делегирование и не подменяет модель или инструмент.
+
+При существенной доработке основная сессия проверяет все изменения, повторно запускает
+необходимые проверки и запрашивает новую проверку без права изменения файлов.
+Результат принимается только с вердиктом `ship`. Плагин отдельно сообщает запрошенные
+настройки модели и настройки, подтверждённые во время выполнения.
+
+Плагин не собирает расход токенов и не рассчитывает стоимость.
 
 ## English description
 
@@ -69,14 +84,6 @@ ChatGPT Work cloud `create_thread` must omit `model` and `thinking`, so it canno
 currently promise arbitrary model or effort control. Permitted Codex workers are
 usable where the current tool schema exposes the needed controls.
 
-## Worker roster
-
-The packaged [worker roster](plugins/astra-advisor/skills/orchestration/references/worker-roster.json)
-enables GPT-5.6 Sol, Terra, and Luna by default. To override it for one installation,
-create `allowed-workers.json` under `$CODEX_HOME/astra-advisor/`, or under
-`~/.codex/astra-advisor/` when `CODEX_HOME` is not set. An invalid user roster stops
-delegation instead of silently using the packaged default.
-
 ## Original developer
 
 Daniel McAteer writes [Attention Heads](https://attentionheads.substack.com/) about AI,
@@ -84,8 +91,6 @@ cognition, and agentic engineering. [Subscribe](https://attentionheads.substack.
 to get new posts.
 
 ## Quick start
-
-This repository is private. The GitHub account installing it must have access.
 
 ~~~sh
 codex plugin marketplace add chaosmorale/astra-sol-advisor --ref main
@@ -127,9 +132,6 @@ previous Codex Orchestration workflow. Astra's share of estimated cost fell by a
 
 The practical effect is that more bounded work can run on Sol, Terra, and Luna while
 the selected primary model retains planning and final verification ownership.
-
-This is not a controlled quality comparison: the task sets and workloads differed.
-Estimated cost is not actual money charged or subscription quota consumed.
 
 ## Verify
 
